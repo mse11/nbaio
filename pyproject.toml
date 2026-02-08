@@ -1,0 +1,28 @@
+[project]
+name = "nbaio"
+version = "0.1"
+description = "Simple async helper with IU support "
+readme = "README.md"
+authors = [{name = "Michal Sestrienka"}]
+license = "Apache-2.0"
+requires-python = ">=3.10"
+classifiers = []
+dependencies = [
+    "click"
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project.urls]
+Homepage = "https://github.com/mse11/nbaio"
+Changelog = "https://github.com/mse11/nbaio/releases"
+Issues = "https://github.com/mse11/nbaio/issues"
+CI = "https://github.com/mse11/nbaio/actions"
+
+[project.scripts]
+nbaio = "nbaio.cli:cli"
+
+[project.optional-dependencies]
+test = ["pytest"]
