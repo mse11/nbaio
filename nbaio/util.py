@@ -11,6 +11,7 @@ Supports both interactive (with UI) and non-interactive modes via ui_enabled fla
 """
 
 from typing import List, Union
+import os
 import shutil
 import zipfile
 import tarfile
@@ -354,6 +355,13 @@ class AioUtils:
         Returns:
             Tuple of (return_code, stdout, stderr)
         """
+
+        if isinstance(command, str) and os.name == 'nt':
+            # Check for POSIX-like environment on Windows (e.g., Git Bash)
+            if os.environ.get("MSYSTEM") or os.environ.get("SHELL"):
+                shell_path = shutil.which("bash") or shutil.which("sh")
+                if shell_path:
+                    command = [shell_path, "-c", command]
 
         try:
             if capture_output:
