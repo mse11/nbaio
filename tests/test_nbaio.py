@@ -48,3 +48,11 @@ def test_download_cli():
             assert "Downloaded 2/2 files" in result.output
             assert Path("file1.txt").read_text() == "content1"
             assert Path("file2.txt").read_text() == "content2"
+
+
+def test_shell_cli():
+    runner = CliRunner()
+    result = runner.invoke(cli, ["shell", "echo hello", "echo world"])
+    
+    assert result.exit_code == 0
+    assert "Finished 2 commands. 2 succeeded." in result.output

@@ -66,3 +66,24 @@ def extract(path: Path, output: Optional[Path], remove: bool):
 
     anyio.run(do_extract)
 
+@cli.command(name="shell")
+@click.argument("commands", nargs=-1, required=True)
+@click.option("-c", "--concurrent", type=int, default=5, help="Maximum concurrent commands")
+@click.option("--cwd", type=click.Path(exists=True, path_type=Path), help="Working directory")
+def shell(commands: list[str], concurrent: int, cwd: Optional[Path]):
+    """Run multiple shell commands concurrently.
+    
+    Example: nbaio shell "echo hello" "ls -la"
+    """
+    print(commands)
+    async def do_shell():
+        results = await AioUtils.shell_commands(
+            commands,
+            max_concurrent=concurrent,
+            cwd=cwd,
+            ui_enabled=True
+        )
+        success_count = sum(1 for r in results if r[0] == 0)
+        click.echo(f"Finished {len(commands)} commands. {success_count} succeeded.")
+
+    anyio.run(do_shell)

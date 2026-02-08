@@ -10,6 +10,7 @@ Uses anyio for async operations (compatible with asyncio and trio backends).
 Supports both interactive (with UI) and non-interactive modes via ui_enabled flags.
 """
 
+from typing import List, Union
 import shutil
 import zipfile
 import tarfile
@@ -335,7 +336,7 @@ class AioUtils:
 
     @staticmethod
     async def shell_command(
-        command: List[str],
+        command: Union[str, List[str]],
         cwd: Optional[Path] = None,
         env: Optional[dict] = None,
         capture_output: bool = True,
@@ -344,7 +345,7 @@ class AioUtils:
         """Run a subprocess command asynchronously.
         
         Args:
-            command: Command and arguments as list
+            command: Command as string (runs via shell) or list of strings
             cwd: Working directory
             env: Environment variables
             capture_output: Whether to capture stdout/stderr
@@ -353,6 +354,7 @@ class AioUtils:
         Returns:
             Tuple of (return_code, stdout, stderr)
         """
+
         try:
             if capture_output:
                 process = await anyio.run_process(
@@ -361,11 +363,16 @@ class AioUtils:
                     env=env,
                     check=False,
                 )
-                return (
+                result = (
                     process.returncode,
                     process.stdout.decode('utf-8', errors='ignore') if process.stdout else "",
                     process.stderr.decode('utf-8', errors='ignore') if process.stderr else "",
                 )
+
+                if ui_enabled:
+                    console.print(f"Command: {command}: {result}")
+
+                return result
             else:
                 process = await anyio.run_process(
                     command,
@@ -379,8 +386,49 @@ class AioUtils:
                 
         except Exception as e:
             if ui_enabled:
-                console.print(f"[red]Error running command {' '.join(command)}: {e}")
+                console.print(f"[red]Error running command: {command}: {e}")
             return (-1, "", str(e))
+
+    @staticmethod
+    async def shell_commands(
+        commands: List[Union[str, List[str]]],
+        max_concurrent: int = 5,
+        cwd: Optional[Path] = None,
+        env: Optional[dict] = None,
+        capture_output: bool = True,
+        ui_enabled: bool = False,
+    ) -> List[tuple[int, str, str]]:
+        """Run multiple subprocess commands concurrently.
+        
+        Args:
+            commands: List of commands (each can be a string or list of strings)
+            max_concurrent: Maximum concurrent commands
+            cwd: Working directory
+            env: Environment variables
+            capture_output: Whether to capture stdout/stderr
+            ui_enabled: Whether to show error messages
+            
+        Returns:
+            List of (return_code, stdout, stderr) tuples
+        """
+        limiter = anyio.CapacityLimiter(max_concurrent)
+        results = [(-1, "", "")] * len(commands)
+        
+        async def run_with_limiter(index: int, cmd: Union[str, List[str]]):
+            async with limiter:
+                results[index] = await AioUtils.shell_command(
+                    cmd,
+                    cwd=cwd,
+                    env=env,
+                    capture_output=capture_output,
+                    ui_enabled=ui_enabled
+                )
+        
+        async with anyio.create_task_group() as tg:
+            for i, cmd in enumerate(commands):
+                tg.start_soon(run_with_limiter, i, cmd)
+        
+        return results
 
     # ============================================================================
     # FILE SYSTEM

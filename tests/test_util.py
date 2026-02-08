@@ -66,6 +66,24 @@ async def test_shell_command():
     assert exit_code == 1
 
 @pytest.mark.anyio
+async def test_shell_commands():
+    commands = [
+        "echo one",
+        "echo two ; echo three",
+        ["python", "-c", "import sys; sys.exit(1)"]
+    ]
+    results = await AioUtils.shell_commands(commands, capture_output=True, ui_enabled=False)
+    
+    assert len(results) == 3
+    assert results[0][0] == 0
+    assert results[1][0] == 0
+    assert results[2][0] == 1
+    assert results[0][1].strip() == "one"
+    # The result of "echo two ; echo three" should contain both
+    assert "two" in results[1][1]
+    assert "three" in results[1][1]
+
+@pytest.mark.anyio
 async def test_download_file(temp_dir, mock_download_url, mock_download_content):
     dest_path = temp_dir / "downloaded.txt"
     
