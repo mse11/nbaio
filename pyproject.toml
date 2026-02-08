@@ -3,13 +3,12 @@ name = "nbaio"
 version = "0.1"
 description = "Simple async helper with IU support "
 readme = "README.md"
-authors = [{name = "Michal Sestrienka"}]
+authors = [{ name = "Michal Sestrienka" }]
 license = "Apache-2.0"
 requires-python = ">=3.10"
 classifiers = []
-dependencies = [
-    "click"
-]
+dependencies = ["click", "anyio", "httpx", "rich"]
+
 
 [build-system]
 requires = ["setuptools"]
@@ -25,4 +24,4 @@ CI = "https://github.com/mse11/nbaio/actions"
 nbaio = "nbaio.cli:cli"
 
 [project.optional-dependencies]
-test = ["pytest"]
+test = ["pytest", "respx"]
