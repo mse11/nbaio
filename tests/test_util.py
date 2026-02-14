@@ -3,6 +3,7 @@ import httpx
 import respx
 import zipfile
 import tarfile
+from unittest.mock import AsyncMock, patch
 from nbaio.util import AioUtils
 
 #==========================================================================
@@ -55,14 +56,14 @@ def test_remove_directory(temp_dir):
 @pytest.mark.anyio
 async def test_shell_command():
     # Simple success command
-    exit_code, stdout, stderr = await AioUtils.shell_command(["echo", "hello"], capture_output=True, ui_enabled=False)
+    exit_code, stdout, stderr = await AioUtils.shell_cmd(["echo", "hello"], capture_output=True, ui_enabled=False)
     assert exit_code == 0
     assert stdout.strip() == "hello"
     assert stderr == ""
     
     # Error command
     # Windows doesn't always have 'ls' or 'false', using a Python script as cross-platform "fail"
-    exit_code, stdout, stderr = await AioUtils.shell_command(["python", "-c", "import sys; sys.exit(1)"], capture_output=True, ui_enabled=False)
+    exit_code, stdout, stderr = await AioUtils.shell_cmd(["python", "-c", "import sys; sys.exit(1)"], capture_output=True, ui_enabled=False)
     assert exit_code == 1
 
 @pytest.mark.anyio
@@ -70,18 +71,59 @@ async def test_shell_commands():
     commands = [
         "echo one",
         "echo two ; echo three",
-        ["python", "-c", "import sys; sys.exit(1)"]
+        ["python", "-c", "import sys; sys.exit(1)"]  # force to exit 1
     ]
-    results = await AioUtils.shell_commands(commands, capture_output=True, ui_enabled=False)
+    results = await AioUtils.shell_cmds(commands, capture_output=True, ui_enabled=False)
     
     assert len(results) == 3
+
     assert results[0][0] == 0
-    assert results[1][0] == 0
-    assert results[2][0] == 1
     assert results[0][1].strip() == "one"
+
     # The result of "echo two ; echo three" should contain both
+    assert results[1][0] == 0
     assert "two" in results[1][1]
     assert "three" in results[1][1]
+
+    assert results[2][0] == 1 # force to exit 1 detected
+
+
+@pytest.mark.anyio
+async def test_shell_cmds_git_clone_mock():
+    clones = [
+        ("https://github.com/user/repo1.git", "dest1"),
+        ("https://github.com/user/repo2.git", ""),
+        ("https://github.com/user/repo3.git", None),
+    ]
+
+    # Mock AioUtils.shell_cmds
+    with patch.object(AioUtils, 'shell_cmds', new_callable=AsyncMock) as mock_shell_cmds:
+        mock_shell_cmds.return_value = [(0, "", ""), (0, "", ""), (0, "", "")]
+
+        results = await AioUtils.shell_cmds_git_clone(
+            clones,
+            max_concurrent=3,
+            ui_enabled=True
+        )
+
+        # Verify shell_cmds was called with constructed commands
+        expected_commands = [
+            ["git", "clone", "https://github.com/user/repo1.git", "dest1"],
+            ["git", "clone", "https://github.com/user/repo2.git"],
+            ["git", "clone", "https://github.com/user/repo3.git"],
+        ]
+
+        mock_shell_cmds.assert_called_once_with(
+            expected_commands,
+            max_concurrent=3,
+            cwd=None,
+            env=None,
+            capture_output=True,
+            ui_enabled=True
+        )
+
+        assert len(results) == 3
+        assert results[0][0] == 0
 
 @pytest.mark.anyio
 async def test_download_file(temp_dir, mock_download_url, mock_download_content):
@@ -145,7 +187,20 @@ async def test_extract_tar(temp_dir):
             import io
             tf.addfile(info, io.BytesIO(data.encode()))
             
+    # Test with default filter ('data')
     success = await AioUtils.extract_tar(tar_path, extract_to, remove_after=False, ui_enabled=False)
-    
     assert success is True
     assert (extract_to / "file1.txt").read_text() == "hello content"
+
+    # Test with explicit 'tar' filter (re-creating tar since remove_after=False)
+    extract_to_tar = temp_dir / "extracted_tar_level"
+    success = await AioUtils.extract_tar(tar_path, extract_to_tar, remove_after=False, ui_enabled=False, filter='tar')
+    assert success is True
+    assert (extract_to_tar / "file1.txt").read_text() == "hello content"
+
+    # Test with 'fully_trusted'
+    extract_to_trusted = temp_dir / "extracted_tar_trusted"
+    success = await AioUtils.extract_tar(tar_path, extract_to_trusted, remove_after=True, ui_enabled=False, filter='fully_trusted')
+    assert success is True
+    assert (extract_to_trusted / "file1.txt").read_text() == "hello content"
+    assert not tar_path.exists()

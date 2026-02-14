@@ -270,6 +270,7 @@ class AioUtils:
         tar_path: Path,
         dest_dir: Path,
         remove_after: bool = True,
+        filter: str = 'data',
     ) -> tuple[bool, Optional[str]]:
         """Core TAR extraction functionality without UI.
         
@@ -277,6 +278,7 @@ class AioUtils:
             tar_path: Path to TAR file
             dest_dir: Destination directory
             remove_after: Whether to remove TAR after extraction
+            filter: Filter level for tarfile.extractall ('data', 'tar', or 'fully_trusted')
             
         Returns:
             Tuple of (success, error_message)
@@ -286,7 +288,7 @@ class AioUtils:
             
             def _extract():
                 with tarfile.open(tar_path, 'r:*') as tar_ref:
-                    tar_ref.extractall(dest_dir)
+                    tar_ref.extractall(dest_dir, filter=filter)
 
             await anyio.to_thread.run_sync(_extract)
             
@@ -304,6 +306,7 @@ class AioUtils:
         dest_dir: Path,
         remove_after: bool = True,
         ui_enabled: bool = False,
+        filter: str = 'data',
     ) -> bool:
         """Extract a TAR archive asynchronously.
         
@@ -312,6 +315,7 @@ class AioUtils:
             dest_dir: Destination directory
             remove_after: Whether to remove TAR after extraction
             ui_enabled: Whether to show UI elements (status/messages)
+            filter: Filter level for tarfile.extractall ('data', 'tar', or 'fully_trusted')
             
         Returns:
             True if successful, False otherwise
@@ -320,7 +324,7 @@ class AioUtils:
         status_ctx = console.status(f"[cyan]Extracting {tar_path.name}...") if ui_enabled else nullcontext()
         
         with status_ctx:
-            success, error = await AioUtils._extract_tar_core(tar_path, dest_dir, remove_after)
+            success, error = await AioUtils._extract_tar_core(tar_path, dest_dir, remove_after, filter=filter)
         
         # Show result messages if UI is enabled
         if ui_enabled:
@@ -336,7 +340,7 @@ class AioUtils:
     # ============================================================================
 
     @staticmethod
-    async def shell_command(
+    async def shell_cmd(
         command: Union[str, List[str]],
         cwd: Optional[Path] = None,
         env: Optional[dict] = None,
@@ -398,7 +402,7 @@ class AioUtils:
             return (-1, "", str(e))
 
     @staticmethod
-    async def shell_commands(
+    async def shell_cmds(
         commands: List[Union[str, List[str]]],
         max_concurrent: int = 5,
         cwd: Optional[Path] = None,
@@ -424,7 +428,7 @@ class AioUtils:
         
         async def run_with_limiter(index: int, cmd: Union[str, List[str]]):
             async with limiter:
-                results[index] = await AioUtils.shell_command(
+                results[index] = await AioUtils.shell_cmd(
                     cmd,
                     cwd=cwd,
                     env=env,
@@ -438,6 +442,47 @@ class AioUtils:
         
         return results
 
+    # ============================================================================
+    # SHELL GIT
+    # ============================================================================
+
+    @staticmethod
+    async def shell_cmds_git_clone(
+        clones: List[tuple[str, Optional[str]]],
+        max_concurrent: int = 5,
+        cwd: Optional[Path] = None,
+        env: Optional[dict] = None,
+        capture_output: bool = True,
+        ui_enabled: bool = False,
+    ) -> List[tuple[int, str, str]]:
+        """Run multiple git clone commands concurrently.
+        
+        Args:
+            clones: List of (url, dest_dir) tuples. dest_dir can be None or empty.
+            max_concurrent: Maximum concurrent clones
+            cwd: Working directory
+            env: Environment variables
+            capture_output: Whether to capture stdout/stderr
+            ui_enabled: Whether to show error messages
+            
+        Returns:
+            List of (return_code, stdout, stderr) tuples
+        """
+        commands = []
+        for url, dest in clones:
+            cmd = ["git", "clone", url]
+            if dest:
+                cmd.append(str(dest))
+            commands.append(cmd)
+            
+        return await AioUtils.shell_cmds(
+            commands,
+            max_concurrent=max_concurrent,
+            cwd=cwd,
+            env=env,
+            capture_output=capture_output,
+            ui_enabled=ui_enabled,
+        )
     # ============================================================================
     # FILE SYSTEM
     # ============================================================================
