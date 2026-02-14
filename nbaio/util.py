@@ -493,10 +493,11 @@ class AioUtils:
             ui_enabled=ui_enabled,
         )
 
+    SHELL_CMD_PY_PIP_ARGS_confyui = ["--no-cache-dir", "--no-warn-script-location", "--timeout=1000", "--retries", "10"]
     @staticmethod
     async def shell_cmd_py_pip(
         python_exe: Union[str, Path],
-        targets: List[str],
+        packages: List[str],
         cwd: Optional[Path] = None,
         env: Optional[dict] = None,
         capture_output: bool = True,
@@ -507,7 +508,7 @@ class AioUtils:
         
         Args:
             python_exe: Path to python executable
-            targets: List of packages, URLs, or requirements files (e.g., ["flet"] or ["-r", "req.txt"])
+            packages: List of packages, URLs, or requirements files (e.g., ["flet"] or ["-r", "req.txt"])
             cwd: Working directory
             env: Environment variables
             capture_output: Whether to capture stdout/stderr
@@ -517,12 +518,12 @@ class AioUtils:
         Returns:
             Tuple of (return_code, stdout, stderr)
         """
-        pip_args = ["--no-cache-dir", "--no-warn-script-location", "--timeout=1000", "--retries", "10"]
+        pip_args = []
         if extra_args:
             pip_args.extend(extra_args)
             
         cmd = [str(python_exe), "-I", "-m", "pip", "install"]
-        cmd.extend(targets)
+        cmd.extend(packages)
         cmd.extend(pip_args)
         
         return await AioUtils.shell_cmd(
@@ -533,10 +534,11 @@ class AioUtils:
             ui_enabled=ui_enabled
         )
 
+    SHELL_CMD_PY_UV_PIP_ARGS_confyui = ["--no-cache", "--link-mode=copy"]
     @staticmethod
     async def shell_cmd_py_uv_pip(
         python_exe: Union[str, Path],
-        targets: List[str],
+        packages: List[str],
         cwd: Optional[Path] = None,
         env: Optional[dict] = None,
         capture_output: bool = True,
@@ -547,7 +549,7 @@ class AioUtils:
         
         Args:
             python_exe: Path to python executable
-            targets: List of packages, URLs, or requirements files
+            packages: List of packages, URLs, or requirements files
             cwd: Working directory
             env: Environment variables
             capture_output: Whether to capture stdout/stderr
@@ -557,12 +559,12 @@ class AioUtils:
         Returns:
             Tuple of (return_code, stdout, stderr)
         """
-        uv_args = ["--no-cache", "--link-mode=copy"]
+        uv_args = []
         if extra_args:
             uv_args.extend(extra_args)
             
         cmd = [str(python_exe), "-I", "-m", "uv", "pip", "install"]
-        cmd.extend(targets)
+        cmd.extend(packages)
         cmd.extend(uv_args)
         
         return await AioUtils.shell_cmd(

@@ -1,5 +1,6 @@
 from unittest.mock import AsyncMock, patch
 from click.testing import CliRunner
+from pathlib import Path
 from nbaio.cli import cli
 from nbaio.util import AioUtils
 
@@ -96,3 +97,51 @@ def test_git_clone_cli():
         result = runner.invoke(cli, ["git_clone", "URL7", "DEST7", "EXTRA"])
         print(f"Test 6 (Error case) Output: {result.output}")
         assert "Invalid group" in result.output
+
+
+def test_py_pip_install_cli():
+    runner = CliRunner()
+    
+    with patch.object(AioUtils, 'shell_cmd_py_pip', new_callable=AsyncMock) as mock_pip:
+        mock_pip.return_value = (0, "Success", "")
+        
+        with runner.isolated_filesystem():
+            # Create a dummy python exe
+            py_exe = Path("python.exe")
+            py_exe.touch()
+            
+            result = runner.invoke(cli, ["py_pip_install", str(py_exe), "pkg1", "pkg2", "--extra-args", "--no-deps"])
+            
+            assert result.exit_code == 0
+            assert "Successfully installed packages." in result.output
+            mock_pip.assert_called_once_with(
+                python_exe=py_exe,
+                packages=["pkg1", "pkg2"],
+                cwd=None,
+                extra_args=["--no-deps"],
+                ui_enabled=True
+            )
+
+
+def test_py_uv_pip_install_cli():
+    runner = CliRunner()
+    
+    with patch.object(AioUtils, 'shell_cmd_py_uv_pip', new_callable=AsyncMock) as mock_uv:
+        mock_uv.return_value = (0, "Success", "")
+        
+        with runner.isolated_filesystem():
+            # Create a dummy python exe
+            py_exe = Path("python.exe")
+            py_exe.touch()
+            
+            result = runner.invoke(cli, ["py_uv_pip_install", str(py_exe), "pkg1", "--extra-args", "--no-deps", "--extra-args", "--force"])
+            
+            assert result.exit_code == 0
+            assert "Successfully installed packages using uv." in result.output
+            mock_uv.assert_called_once_with(
+                python_exe=py_exe,
+                packages=["pkg1"],
+                cwd=None,
+                extra_args=["--no-deps", "--force"],
+                ui_enabled=True
+            )
