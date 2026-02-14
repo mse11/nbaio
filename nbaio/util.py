@@ -492,6 +492,86 @@ class AioUtils:
             capture_output=capture_output,
             ui_enabled=ui_enabled,
         )
+
+    @staticmethod
+    async def shell_cmd_py_pip(
+        python_exe: Union[str, Path],
+        targets: List[str],
+        cwd: Optional[Path] = None,
+        env: Optional[dict] = None,
+        capture_output: bool = True,
+        ui_enabled: bool = False,
+        extra_args: Optional[List[str]] = None,
+    ) -> tuple[int, str, str]:
+        """Run pip install via specified python executable.
+        
+        Args:
+            python_exe: Path to python executable
+            targets: List of packages, URLs, or requirements files (e.g., ["flet"] or ["-r", "req.txt"])
+            cwd: Working directory
+            env: Environment variables
+            capture_output: Whether to capture stdout/stderr
+            ui_enabled: Whether to show error messages
+            extra_args: Additional arguments for pip install
+            
+        Returns:
+            Tuple of (return_code, stdout, stderr)
+        """
+        pip_args = ["--no-cache-dir", "--no-warn-script-location", "--timeout=1000", "--retries", "10"]
+        if extra_args:
+            pip_args.extend(extra_args)
+            
+        cmd = [str(python_exe), "-I", "-m", "pip", "install"]
+        cmd.extend(targets)
+        cmd.extend(pip_args)
+        
+        return await AioUtils.shell_cmd(
+            cmd, 
+            cwd=cwd, 
+            env=env, 
+            capture_output=capture_output, 
+            ui_enabled=ui_enabled
+        )
+
+    @staticmethod
+    async def shell_cmd_py_uv_pip(
+        python_exe: Union[str, Path],
+        targets: List[str],
+        cwd: Optional[Path] = None,
+        env: Optional[dict] = None,
+        capture_output: bool = True,
+        ui_enabled: bool = False,
+        extra_args: Optional[List[str]] = None,
+    ) -> tuple[int, str, str]:
+        """Run uv pip install via specified python executable.
+        
+        Args:
+            python_exe: Path to python executable
+            targets: List of packages, URLs, or requirements files
+            cwd: Working directory
+            env: Environment variables
+            capture_output: Whether to capture stdout/stderr
+            ui_enabled: Whether to show error messages
+            extra_args: Additional arguments for uv pip install
+            
+        Returns:
+            Tuple of (return_code, stdout, stderr)
+        """
+        uv_args = ["--no-cache", "--link-mode=copy"]
+        if extra_args:
+            uv_args.extend(extra_args)
+            
+        cmd = [str(python_exe), "-I", "-m", "uv", "pip", "install"]
+        cmd.extend(targets)
+        cmd.extend(uv_args)
+        
+        return await AioUtils.shell_cmd(
+            cmd, 
+            cwd=cwd, 
+            env=env, 
+            capture_output=capture_output, 
+            ui_enabled=ui_enabled
+        )
     # ============================================================================
     # FILE SYSTEM
     # ============================================================================

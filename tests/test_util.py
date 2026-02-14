@@ -243,3 +243,49 @@ async def test_extract_tar(temp_dir):
     assert success is True
     assert (extract_to_trusted / "file1.txt").read_text() == "hello content"
     assert not tar_path.exists()
+
+@pytest.mark.anyio
+async def test_shell_cmd_py_pip_mock():
+    python_exe = "python.exe"
+    targets = ["flet"]
+    
+    with patch.object(AioUtils, 'shell_cmd', new_callable=AsyncMock) as mock_shell_cmd:
+        mock_shell_cmd.return_value = (0, "success", "")
+        
+        await AioUtils.shell_cmd_py_pip(python_exe, targets)
+        
+        expected_cmd = [
+            python_exe, "-I", "-m", "pip", "install", 
+            "flet", 
+            "--no-cache-dir", "--no-warn-script-location", "--timeout=1000", "--retries", "10"
+        ]
+        mock_shell_cmd.assert_called_once_with(
+            expected_cmd,
+            cwd=None,
+            env=None,
+            capture_output=True,
+            ui_enabled=False
+        )
+
+@pytest.mark.anyio
+async def test_shell_cmd_py_uv_pip_mock():
+    python_exe = "python.exe"
+    targets = ["flet"]
+    
+    with patch.object(AioUtils, 'shell_cmd', new_callable=AsyncMock) as mock_shell_cmd:
+        mock_shell_cmd.return_value = (0, "success", "")
+        
+        await AioUtils.shell_cmd_py_uv_pip(python_exe, targets)
+        
+        expected_cmd = [
+            python_exe, "-I", "-m", "uv", "pip", "install", 
+            "flet", 
+            "--no-cache", "--link-mode=copy"
+        ]
+        mock_shell_cmd.assert_called_once_with(
+            expected_cmd,
+            cwd=None,
+            env=None,
+            capture_output=True,
+            ui_enabled=False
+        )
