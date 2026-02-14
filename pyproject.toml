@@ -4,7 +4,7 @@ version = "0.1"
 description = "Simple async helper with IU support "
 readme = "README.md"
 authors = [{ name = "Michal Sestrienka" }]
-license = "Apache-2.0"
+license = {file = "LICENSE"}
 requires-python = ">=3.10"
 classifiers = []
 dependencies = ["click", "anyio", "httpx", "rich"]
