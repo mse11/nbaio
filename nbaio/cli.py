@@ -95,7 +95,8 @@ def shell(commands: list[str], concurrent: int, cwd: Optional[Path]):
 @click.option("-s", "--separator", default=",", help="Separator between URL and destination pairs")
 @click.option("-c", "--concurrent", type=int, default=5, help="Maximum concurrent clones")
 @click.option("--cwd", type=click.Path(exists=True, path_type=Path), help="Working directory")
-def git_clone(args: list[str], separator: str, concurrent: int, cwd: Optional[Path]):
+@click.option("--skip-lfs/--no-skip-lfs", is_flag=True, default=True, help="Skip LFS smudge (GIT_LFS_SKIP_SMUDGE=1)")
+def git_clone(args: list[str], separator: str, concurrent: int, cwd: Optional[Path], skip_lfs: bool):
     """Run multiple git clone commands concurrently.
     
     Format: URL [DEST] [SEPARATOR URL [DEST] ...]
@@ -135,7 +136,8 @@ def git_clone(args: list[str], separator: str, concurrent: int, cwd: Optional[Pa
             clone_pairs,
             max_concurrent=concurrent,
             cwd=cwd,
-            ui_enabled=True
+            ui_enabled=True,
+            skip_lfs=skip_lfs
         )
         success_count = sum(1 for r in results if r[0] == 0)
         click.echo(f"Finished {len(clone_pairs)} clones. {success_count} succeeded.")

@@ -454,6 +454,7 @@ class AioUtils:
         env: Optional[dict] = None,
         capture_output: bool = True,
         ui_enabled: bool = False,
+        skip_lfs: bool = True,
     ) -> List[tuple[int, str, str]]:
         """Run multiple git clone commands concurrently.
         
@@ -464,10 +465,18 @@ class AioUtils:
             env: Environment variables
             capture_output: Whether to capture stdout/stderr
             ui_enabled: Whether to show error messages
+            skip_lfs: Whether to skip LFS smudge (GIT_LFS_SKIP_SMUDGE=1)
             
         Returns:
             List of (return_code, stdout, stderr) tuples
         """
+        if skip_lfs:
+            if env is None:
+                env = os.environ.copy()
+            else:
+                env = env.copy()
+            env["GIT_LFS_SKIP_SMUDGE"] = "1"
+
         commands = []
         for url, dest in clones:
             cmd = ["git", "clone", url]

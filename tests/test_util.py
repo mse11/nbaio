@@ -1,3 +1,4 @@
+import os
 import pytest
 import httpx
 import respx
@@ -103,7 +104,8 @@ async def test_shell_cmds_git_clone_mock():
         results = await AioUtils.shell_cmds_git_clone(
             clones,
             max_concurrent=3,
-            ui_enabled=True
+            ui_enabled=True,
+            skip_lfs=False # Explicitly set to False to match original test behavior
         )
 
         # Verify shell_cmds was called with constructed commands
@@ -124,6 +126,43 @@ async def test_shell_cmds_git_clone_mock():
 
         assert len(results) == 3
         assert results[0][0] == 0
+
+@pytest.mark.anyio
+async def test_shell_cmds_git_clone_lfs_mock():
+    clones = [
+        ("https://github.com/user/repo1.git", "dest1"),
+    ]
+
+    # Test default: skip_lfs=True
+    with patch.object(AioUtils, 'shell_cmds', new_callable=AsyncMock) as mock_shell_cmds:
+        mock_shell_cmds.return_value = [(0, "", "")]
+
+        await AioUtils.shell_cmds_git_clone(
+            clones,
+            max_concurrent=1,
+            ui_enabled=True
+        )
+
+        args, kwargs = mock_shell_cmds.call_args
+        assert kwargs['env']['GIT_LFS_SKIP_SMUDGE'] == "1"
+        assert kwargs['env']['PATH'] == os.environ['PATH']
+
+    # Test explicit env with skip_lfs=True
+    with patch.object(AioUtils, 'shell_cmds', new_callable=AsyncMock) as mock_shell_cmds:
+        mock_shell_cmds.return_value = [(0, "", "")]
+        custom_env = {"MY_VAR": "value"}
+
+        await AioUtils.shell_cmds_git_clone(
+            clones,
+            max_concurrent=1,
+            env=custom_env,
+            skip_lfs=True
+        )
+
+        args, kwargs = mock_shell_cmds.call_args
+        assert kwargs['env']['GIT_LFS_SKIP_SMUDGE'] == "1"
+        assert kwargs['env']['MY_VAR'] == "value"
+        assert 'PATH' not in kwargs['env'] if 'PATH' not in custom_env else True
 
 @pytest.mark.anyio
 async def test_download_file(temp_dir, mock_download_url, mock_download_content):

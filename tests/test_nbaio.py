@@ -70,24 +70,29 @@ def test_git_clone_cli():
         # Test 1: Simple pair
         result = runner.invoke(cli, ["git_clone", "URL1", "DEST1"])
         print(f"Test 1 (Simple pair) Output: {result.output}")
-        mock_clone.assert_called_with([("URL1", "DEST1")], max_concurrent=5, cwd=None, ui_enabled=True)
+        mock_clone.assert_called_with([("URL1", "DEST1")], max_concurrent=5, cwd=None, ui_enabled=True, skip_lfs=True)
         
         # Test 2: URL without DEST
         result = runner.invoke(cli, ["git_clone", "URL2"])
         print(f"Test 2 (URL without DEST) Output: {result.output}")
-        mock_clone.assert_called_with([("URL2", "")], max_concurrent=5, cwd=None, ui_enabled=True)
+        mock_clone.assert_called_with([("URL2", "")], max_concurrent=5, cwd=None, ui_enabled=True, skip_lfs=True)
         
         # Test 3: Multiple pairs with separator
         result = runner.invoke(cli, ["git_clone", "URL3", "DEST3", ",", "URL4"])
         print(f"Test 3 (Multiple pairs) Output: {result.output}")
-        mock_clone.assert_called_with([("URL3", "DEST3"), ("URL4", "")], max_concurrent=5, cwd=None, ui_enabled=True)
+        mock_clone.assert_called_with([("URL3", "DEST3"), ("URL4", "")], max_concurrent=5, cwd=None, ui_enabled=True, skip_lfs=True)
 
         # Test 4: Custom separator
         result = runner.invoke(cli, ["git_clone", "-s", "|", "URL5", "|", "URL6", "DEST6"])
         print(f"Test 4 (Custom separator) Output: {result.output}")
-        mock_clone.assert_called_with([("URL5", ""), ("URL6", "DEST6")], max_concurrent=5, cwd=None, ui_enabled=True)
+        mock_clone.assert_called_with([("URL5", ""), ("URL6", "DEST6")], max_concurrent=5, cwd=None, ui_enabled=True, skip_lfs=True)
 
-        # Test 5: Error case (too many args in a group)
+        # Test 5: --no-skip-lfs flag
+        result = runner.invoke(cli, ["git_clone", "--no-skip-lfs", "URL_LFS", "DEST_LFS"])
+        print(f"Test 5 (--no-skip-lfs) Output: {result.output}")
+        mock_clone.assert_called_with([("URL_LFS", "DEST_LFS")], max_concurrent=5, cwd=None, ui_enabled=True, skip_lfs=False)
+
+        # Test 6: Error case (too many args in a group)
         result = runner.invoke(cli, ["git_clone", "URL7", "DEST7", "EXTRA"])
-        print(f"Test 5 (Error case) Output: {result.output}")
+        print(f"Test 6 (Error case) Output: {result.output}")
         assert "Invalid group" in result.output
