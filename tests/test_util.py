@@ -6,6 +6,7 @@ import zipfile
 import tarfile
 from unittest.mock import AsyncMock, patch
 from nbaio.util import AioUtils
+from nbaio.ui import global_ui
 
 #==========================================================================
 # FIXTURES
@@ -121,7 +122,8 @@ async def test_shell_cmds_git_clone_mock():
             cwd=None,
             env=None,
             capture_output=True,
-            ui_enabled=True
+            ui_enabled=True,
+            ui=global_ui
         )
 
         assert len(results) == 3
@@ -264,7 +266,8 @@ async def test_shell_cmd_py_pip_install_mock():
             cwd=None,
             env=None,
             capture_output=True,
-            ui_enabled=False
+            ui_enabled=False,
+            ui=global_ui
         )
 
 @pytest.mark.anyio
@@ -286,7 +289,8 @@ async def test_shell_cmd_py_pip_uninstall_mock():
             cwd=None,
             env=None,
             capture_output=True,
-            ui_enabled=False
+            ui_enabled=False,
+            ui=global_ui
         )
 
 @pytest.mark.anyio
@@ -309,7 +313,8 @@ async def test_shell_cmd_py_uv_pip_install_mock():
             cwd=None,
             env=None,
             capture_output=True,
-            ui_enabled=False
+            ui_enabled=False,
+            ui=global_ui
         )
 
 @pytest.mark.anyio
@@ -331,6 +336,7 @@ async def test_shell_cmd_py_uv_pip_uninstall_mock():
             cwd=None,
             env=None,
             capture_output=True,
-            ui_enabled=False
+            ui_enabled=False,
+            ui=global_ui
         )
 

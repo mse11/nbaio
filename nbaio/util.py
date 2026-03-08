@@ -20,18 +20,8 @@ from typing import Optional, List, Callable
 from contextlib import nullcontext
 import anyio
 import httpx
-from rich.console import Console
-from rich.progress import (
-    Progress,
-    SpinnerColumn,
-    BarColumn,
-    TextColumn,
-    DownloadColumn,
-    TransferSpeedColumn,
-    TimeRemainingColumn,
-)
-
-console = Console()
+from rich.progress import Progress
+from .ui import AioUi, global_ui
 
 
 class AioUtils:
@@ -90,6 +80,7 @@ class AioUtils:
         verify_ssl: bool = True,
         ui_enabled: bool = False,
         progress: Optional[Progress] = None,
+        ui: Optional['AioUi'] = global_ui,
     ) -> bool:
         """Download a file asynchronously with optional progress tracking.
         
@@ -135,14 +126,14 @@ class AioUtils:
         # Validate size if expected
         if success and expected_size and dest_path.stat().st_size != expected_size:
             if ui_enabled:
-                console.print(
+                        ui.print(
                     f"[yellow]Warning: Downloaded file size mismatch for {dest_path.name}"
                 )
             return False
         
         # Show error message if failed
         if not success and ui_enabled:
-            console.print(f"[red]Error downloading {url}: {error}")
+                ui.print(f"[red]Error downloading {url}: {error}")
         
         return success
 
@@ -151,6 +142,7 @@ class AioUtils:
         downloads: List[tuple[str, Path]],
         max_concurrent: int = 5,
         ui_enabled: bool = False,
+        ui: Optional['AioUi'] = global_ui,
     ) -> List[bool]:
         """Download multiple files in parallel.
         
@@ -163,15 +155,7 @@ class AioUtils:
             List of success flags for each download
         """
         # Use progress context only if UI is enabled
-        progress_ctx = Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            DownloadColumn(),
-            TransferSpeedColumn(),
-            TimeRemainingColumn(),
-            console=console,
-        ) if ui_enabled else nullcontext()
+        progress_ctx = ui.progress(ui_enabled=ui_enabled)
         
         with progress_ctx as progress:
             limiter = anyio.CapacityLimiter(max_concurrent)
@@ -184,7 +168,8 @@ class AioUtils:
                         url, 
                         dest, 
                         ui_enabled=ui_enabled,
-                        progress=progress if ui_enabled else None
+                        progress=progress if ui_enabled else None,
+                        ui=ui,
                     )
             
             async with anyio.create_task_group() as tg:
@@ -235,6 +220,7 @@ class AioUtils:
         dest_dir: Path,
         remove_after: bool = False,
         ui_enabled: bool = False,
+        ui: Optional['AioUi'] = global_ui,
     ) -> bool:
         """Extract a ZIP archive asynchronously.
         
@@ -248,7 +234,7 @@ class AioUtils:
             True if successful, False otherwise
         """
         # Use status context only if UI is enabled
-        status_ctx = console.status(f"[cyan]Extracting {zip_path.name}...") if ui_enabled else nullcontext()
+        status_ctx = ui.status(f"[cyan]Extracting {zip_path.name}...", ui_enabled=ui_enabled)
         
         with status_ctx:
             success, error = await AioUtils._extract_zip_core(zip_path, dest_dir, remove_after)
@@ -256,9 +242,9 @@ class AioUtils:
         # Show result messages if UI is enabled
         if ui_enabled:
             if success:
-                console.print(f"[green]✓ Extracted {zip_path.name}")
+                ui.print(f"[green]✓ Extracted {zip_path.name}")
             else:
-                console.print(f"[red]Error extracting {zip_path}: {error}")
+                ui.print(f"[red]Error extracting {zip_path}: {error}")
         
         return success
         
@@ -307,6 +293,7 @@ class AioUtils:
         remove_after: bool = True,
         ui_enabled: bool = False,
         filter: str = 'data',
+        ui: Optional['AioUi'] = global_ui,
     ) -> bool:
         """Extract a TAR archive asynchronously.
         
@@ -321,7 +308,7 @@ class AioUtils:
             True if successful, False otherwise
         """
         # Use status context only if UI is enabled
-        status_ctx = console.status(f"[cyan]Extracting {tar_path.name}...") if ui_enabled else nullcontext()
+        status_ctx = ui.status(f"[cyan]Extracting {tar_path.name}...", ui_enabled=ui_enabled)
         
         with status_ctx:
             success, error = await AioUtils._extract_tar_core(tar_path, dest_dir, remove_after, filter=filter)
@@ -329,9 +316,9 @@ class AioUtils:
         # Show result messages if UI is enabled
         if ui_enabled:
             if success:
-                console.print(f"[green]✓ Extracted {tar_path.name}")
+                ui.print(f"[green]✓ Extracted {tar_path.name}")
             else:
-                console.print(f"[red]Error extracting {tar_path}: {error}")
+                ui.print(f"[red]Error extracting {tar_path}: {error}")
         
         return success
 
@@ -346,6 +333,7 @@ class AioUtils:
         env: Optional[dict] = None,
         capture_output: bool = True,
         ui_enabled: bool = False,
+        ui: Optional['AioUi'] = global_ui,
     ) -> tuple[int, str, str]:
         """Run a subprocess command asynchronously.
         
@@ -382,7 +370,7 @@ class AioUtils:
                 )
 
                 if ui_enabled:
-                    console.print(f"Command: {command}: {result}")
+                    ui.print(f"Command: {command}: {result}")
 
                 return result
             else:
@@ -398,7 +386,7 @@ class AioUtils:
                 
         except Exception as e:
             if ui_enabled:
-                console.print(f"[red]Error running command: {command}: {e}")
+                ui.print(f"[red]Error running command: {command}: {e}")
             return (-1, "", str(e))
 
     @staticmethod
@@ -409,6 +397,7 @@ class AioUtils:
         env: Optional[dict] = None,
         capture_output: bool = True,
         ui_enabled: bool = False,
+        ui: Optional['AioUi'] = global_ui,
     ) -> List[tuple[int, str, str]]:
         """Run multiple subprocess commands concurrently.
         
@@ -433,7 +422,8 @@ class AioUtils:
                     cwd=cwd,
                     env=env,
                     capture_output=capture_output,
-                    ui_enabled=ui_enabled
+                    ui_enabled=ui_enabled,
+                    ui=ui
                 )
         
         async with anyio.create_task_group() as tg:
@@ -455,6 +445,7 @@ class AioUtils:
         capture_output: bool = True,
         ui_enabled: bool = False,
         skip_lfs: bool = True,
+        ui: Optional['AioUi'] = global_ui,
     ) -> List[tuple[int, str, str]]:
         """Run multiple git clone commands concurrently.
         
@@ -491,6 +482,7 @@ class AioUtils:
             env=env,
             capture_output=capture_output,
             ui_enabled=ui_enabled,
+            ui=ui,
         )
 
     # ============================================================================
@@ -507,6 +499,7 @@ class AioUtils:
         capture_output: bool = True,
         ui_enabled: bool = False,
         extra_args: Optional[List[str]] = None,
+        ui: Optional['AioUi'] = global_ui,
     ) -> tuple[int, str, str]:
         """Run pip command via specified python executable.
         
@@ -536,7 +529,8 @@ class AioUtils:
             cwd=cwd, 
             env=env, 
             capture_output=capture_output, 
-            ui_enabled=ui_enabled
+            ui_enabled=ui_enabled,
+            ui=ui
         )
 
     @staticmethod
@@ -548,6 +542,7 @@ class AioUtils:
         capture_output: bool = True,
         ui_enabled: bool = False,
         extra_args: Optional[List[str]] = None,
+        ui: Optional['AioUi'] = global_ui,
     ) -> tuple[int, str, str]:
         """Run pip install via specified python executable."""
         return await AioUtils._shell_cmd_py_pip(
@@ -558,7 +553,8 @@ class AioUtils:
             env=env,
             capture_output=capture_output,
             ui_enabled=ui_enabled,
-            extra_args=extra_args
+            extra_args=extra_args,
+            ui=ui
         )
 
     @staticmethod
@@ -570,6 +566,7 @@ class AioUtils:
         capture_output: bool = True,
         ui_enabled: bool = False,
         extra_args: Optional[List[str]] = None,
+        ui: Optional['AioUi'] = global_ui,
     ) -> tuple[int, str, str]:
         """Run pip uninstall via specified python executable."""
         if extra_args is None:
@@ -585,7 +582,8 @@ class AioUtils:
             env=env,
             capture_output=capture_output,
             ui_enabled=ui_enabled,
-            extra_args=extra_args
+            extra_args=extra_args,
+            ui=ui
         )
 
     @staticmethod
@@ -598,6 +596,7 @@ class AioUtils:
         capture_output: bool = True,
         ui_enabled: bool = False,
         extra_args: Optional[List[str]] = None,
+        ui: Optional['AioUi'] = global_ui,
     ) -> tuple[int, str, str]:
         """Run uv pip command via specified python executable.
         
@@ -627,7 +626,8 @@ class AioUtils:
             cwd=cwd, 
             env=env, 
             capture_output=capture_output, 
-            ui_enabled=ui_enabled
+            ui_enabled=ui_enabled,
+            ui=ui
         )
 
     @staticmethod
@@ -639,6 +639,7 @@ class AioUtils:
         capture_output: bool = True,
         ui_enabled: bool = False,
         extra_args: Optional[List[str]] = None,
+        ui: Optional['AioUi'] = global_ui,
     ) -> tuple[int, str, str]:
         """Run uv pip install via specified python executable."""
         return await AioUtils._shell_cmd_py_uv_pip(
@@ -649,7 +650,8 @@ class AioUtils:
             env=env,
             capture_output=capture_output,
             ui_enabled=ui_enabled,
-            extra_args=extra_args
+            extra_args=extra_args,
+            ui=ui
         )
 
     @staticmethod
@@ -661,6 +663,7 @@ class AioUtils:
         capture_output: bool = True,
         ui_enabled: bool = False,
         extra_args: Optional[List[str]] = None,
+        ui: Optional['AioUi'] = global_ui,
     ) -> tuple[int, str, str]:
         """Run uv pip uninstall via specified python executable."""
         if extra_args is None:
@@ -676,7 +679,8 @@ class AioUtils:
             env=env,
             capture_output=capture_output,
             ui_enabled=ui_enabled,
-            extra_args=extra_args
+            extra_args=extra_args,
+            ui=ui
         )
         
     # ============================================================================
@@ -707,7 +711,8 @@ class AioUtils:
     def remove_directory(
         dir_path: Path,
         ui_enabled: bool = False,
-        custom_console: Optional[Console] = None,
+        custom_console: Optional['Console'] = None,
+        ui: Optional['AioUi'] = global_ui,
     ) -> bool:
         """Remove a directory and all its contents.
         
@@ -722,19 +727,19 @@ class AioUtils:
         if not dir_path.exists():
             return True
         
-        _console = custom_console or console
+        ui = ui or (AioUi(custom_console) if custom_console else global_ui)
         
         try:
             # Use status context only if UI is enabled
-            status_ctx = _console.status(f"[cyan]Removing {dir_path}...") if ui_enabled else nullcontext()
+            status_ctx = ui.status(f"[cyan]Removing {dir_path}...", ui_enabled=ui_enabled)
             
             with status_ctx:
                 shutil.rmtree(dir_path)
             
             if ui_enabled:
-                _console.print(f"[green]✓ Removed {dir_path}")
+                ui.print(f"[green]✓ Removed {dir_path}")
             return True
         except Exception as e:
             if ui_enabled:
-                _console.print(f"[red]Error removing {dir_path}: {e}")
+                ui.print(f"[red]Error removing {dir_path}: {e}")
             return False
