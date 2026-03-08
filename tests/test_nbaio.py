@@ -102,7 +102,7 @@ def test_git_clone_cli():
 def test_py_pip_install_cli():
     runner = CliRunner()
     
-    with patch.object(AioUtils, 'shell_cmd_py_pip', new_callable=AsyncMock) as mock_pip:
+    with patch.object(AioUtils, 'shell_cmd_py_pip_install', new_callable=AsyncMock) as mock_pip:
         mock_pip.return_value = (0, "Success", "")
         
         with runner.isolated_filesystem():
@@ -123,10 +123,34 @@ def test_py_pip_install_cli():
             )
 
 
+def test_py_pip_uninstall_cli():
+    runner = CliRunner()
+    
+    with patch.object(AioUtils, 'shell_cmd_py_pip_uninstall', new_callable=AsyncMock) as mock_pip:
+        mock_pip.return_value = (0, "Success", "")
+        
+        with runner.isolated_filesystem():
+            # Create a dummy python exe
+            py_exe = Path("python.exe")
+            py_exe.touch()
+            
+            result = runner.invoke(cli, ["py_pip_uninstall", str(py_exe), "pkg1", "--extra-args", "-y"])
+            
+            assert result.exit_code == 0
+            assert "Successfully uninstalled packages." in result.output
+            mock_pip.assert_called_once_with(
+                python_exe=py_exe,
+                packages=["pkg1"],
+                cwd=None,
+                extra_args=["-y"],
+                ui_enabled=True
+            )
+
+
 def test_py_uv_pip_install_cli():
     runner = CliRunner()
     
-    with patch.object(AioUtils, 'shell_cmd_py_uv_pip', new_callable=AsyncMock) as mock_uv:
+    with patch.object(AioUtils, 'shell_cmd_py_uv_pip_install', new_callable=AsyncMock) as mock_uv:
         mock_uv.return_value = (0, "Success", "")
         
         with runner.isolated_filesystem():
@@ -143,5 +167,29 @@ def test_py_uv_pip_install_cli():
                 packages=["pkg1"],
                 cwd=None,
                 extra_args=["--no-deps", "--force"],
+                ui_enabled=True
+            )
+
+
+def test_py_uv_pip_uninstall_cli():
+    runner = CliRunner()
+    
+    with patch.object(AioUtils, 'shell_cmd_py_uv_pip_uninstall', new_callable=AsyncMock) as mock_uv:
+        mock_uv.return_value = (0, "Success", "")
+        
+        with runner.isolated_filesystem():
+            # Create a dummy python exe
+            py_exe = Path("python.exe")
+            py_exe.touch()
+            
+            result = runner.invoke(cli, ["py_uv_pip_uninstall", str(py_exe), "pkg1", "--extra-args", "-y"])
+            
+            assert result.exit_code == 0
+            assert "Successfully uninstalled packages using uv." in result.output
+            mock_uv.assert_called_once_with(
+                python_exe=py_exe,
+                packages=["pkg1"],
+                cwd=None,
+                extra_args=["-y"],
                 ui_enabled=True
             )

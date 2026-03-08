@@ -493,9 +493,13 @@ class AioUtils:
             ui_enabled=ui_enabled,
         )
 
-    SHELL_CMD_PY_PIP_ARGS_confyui = ["--no-cache-dir", "--no-warn-script-location", "--timeout=1000", "--retries", "10"]
+    # ============================================================================
+    # SHELL PYTHON
+    # ============================================================================
+
     @staticmethod
-    async def shell_cmd_py_pip(
+    async def _shell_cmd_py_pip(
+        subcommand: str,
         python_exe: Union[str, Path],
         packages: List[str],
         cwd: Optional[Path] = None,
@@ -504,16 +508,17 @@ class AioUtils:
         ui_enabled: bool = False,
         extra_args: Optional[List[str]] = None,
     ) -> tuple[int, str, str]:
-        """Run pip install via specified python executable.
+        """Run pip command via specified python executable.
         
         Args:
+            subcommand: Pip subcommand (e.g., install, uninstall)
             python_exe: Path to python executable
             packages: List of packages, URLs, or requirements files (e.g., ["flet"] or ["-r", "req.txt"])
             cwd: Working directory
             env: Environment variables
             capture_output: Whether to capture stdout/stderr
             ui_enabled: Whether to show error messages
-            extra_args: Additional arguments for pip install
+            extra_args: Additional arguments for pip
             
         Returns:
             Tuple of (return_code, stdout, stderr)
@@ -522,7 +527,7 @@ class AioUtils:
         if extra_args:
             pip_args.extend(extra_args)
             
-        cmd = [str(python_exe), "-I", "-m", "pip", "install"]
+        cmd = [str(python_exe), "-I", "-m", "pip", subcommand]
         cmd.extend(packages)
         cmd.extend(pip_args)
         
@@ -534,9 +539,8 @@ class AioUtils:
             ui_enabled=ui_enabled
         )
 
-    SHELL_CMD_PY_UV_PIP_ARGS_confyui = ["--no-cache", "--link-mode=copy"]
     @staticmethod
-    async def shell_cmd_py_uv_pip(
+    async def shell_cmd_py_pip_install(
         python_exe: Union[str, Path],
         packages: List[str],
         cwd: Optional[Path] = None,
@@ -545,16 +549,67 @@ class AioUtils:
         ui_enabled: bool = False,
         extra_args: Optional[List[str]] = None,
     ) -> tuple[int, str, str]:
-        """Run uv pip install via specified python executable.
+        """Run pip install via specified python executable."""
+        return await AioUtils._shell_cmd_py_pip(
+            "install",
+            python_exe=python_exe,
+            packages=packages,
+            cwd=cwd,
+            env=env,
+            capture_output=capture_output,
+            ui_enabled=ui_enabled,
+            extra_args=extra_args
+        )
+
+    @staticmethod
+    async def shell_cmd_py_pip_uninstall(
+        python_exe: Union[str, Path],
+        packages: List[str],
+        cwd: Optional[Path] = None,
+        env: Optional[dict] = None,
+        capture_output: bool = True,
+        ui_enabled: bool = False,
+        extra_args: Optional[List[str]] = None,
+    ) -> tuple[int, str, str]:
+        """Run pip uninstall via specified python executable."""
+        if extra_args is None:
+            extra_args = ["-y"]
+        elif "-y" not in extra_args and "--yes" not in extra_args:
+            extra_args = list(extra_args) + ["-y"]
+            
+        return await AioUtils._shell_cmd_py_pip(
+            "uninstall",
+            python_exe=python_exe,
+            packages=packages,
+            cwd=cwd,
+            env=env,
+            capture_output=capture_output,
+            ui_enabled=ui_enabled,
+            extra_args=extra_args
+        )
+
+    @staticmethod
+    async def _shell_cmd_py_uv_pip(
+        subcommand: str,
+        python_exe: Union[str, Path],
+        packages: List[str],
+        cwd: Optional[Path] = None,
+        env: Optional[dict] = None,
+        capture_output: bool = True,
+        ui_enabled: bool = False,
+        extra_args: Optional[List[str]] = None,
+    ) -> tuple[int, str, str]:
+        """Run uv pip command via specified python executable.
         
         Args:
+            subcommand: Pip subcommand (e.g., install, uninstall)
             python_exe: Path to python executable
             packages: List of packages, URLs, or requirements files
             cwd: Working directory
             env: Environment variables
             capture_output: Whether to capture stdout/stderr
             ui_enabled: Whether to show error messages
-            extra_args: Additional arguments for uv pip install
+            extra_args: Additional arguments for uv pip
             
         Returns:
             Tuple of (return_code, stdout, stderr)
@@ -563,7 +618,7 @@ class AioUtils:
         if extra_args:
             uv_args.extend(extra_args)
             
-        cmd = [str(python_exe), "-I", "-m", "uv", "pip", "install"]
+        cmd = [str(python_exe), "-I", "-m", "uv", "pip", subcommand]
         cmd.extend(packages)
         cmd.extend(uv_args)
         
@@ -574,6 +629,56 @@ class AioUtils:
             capture_output=capture_output, 
             ui_enabled=ui_enabled
         )
+
+    @staticmethod
+    async def shell_cmd_py_uv_pip_install(
+        python_exe: Union[str, Path],
+        packages: List[str],
+        cwd: Optional[Path] = None,
+        env: Optional[dict] = None,
+        capture_output: bool = True,
+        ui_enabled: bool = False,
+        extra_args: Optional[List[str]] = None,
+    ) -> tuple[int, str, str]:
+        """Run uv pip install via specified python executable."""
+        return await AioUtils._shell_cmd_py_uv_pip(
+            "install",
+            python_exe=python_exe,
+            packages=packages,
+            cwd=cwd,
+            env=env,
+            capture_output=capture_output,
+            ui_enabled=ui_enabled,
+            extra_args=extra_args
+        )
+
+    @staticmethod
+    async def shell_cmd_py_uv_pip_uninstall(
+        python_exe: Union[str, Path],
+        packages: List[str],
+        cwd: Optional[Path] = None,
+        env: Optional[dict] = None,
+        capture_output: bool = True,
+        ui_enabled: bool = False,
+        extra_args: Optional[List[str]] = None,
+    ) -> tuple[int, str, str]:
+        """Run uv pip uninstall via specified python executable."""
+        if extra_args is None:
+            extra_args = ["-y"]
+        elif "-y" not in extra_args and "--yes" not in extra_args:
+            extra_args = list(extra_args) + ["-y"]
+            
+        return await AioUtils._shell_cmd_py_uv_pip(
+            "uninstall",
+            python_exe=python_exe,
+            packages=packages,
+            cwd=cwd,
+            env=env,
+            capture_output=capture_output,
+            ui_enabled=ui_enabled,
+            extra_args=extra_args
+        )
+        
     # ============================================================================
     # FILE SYSTEM
     # ============================================================================

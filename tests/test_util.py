@@ -245,14 +245,14 @@ async def test_extract_tar(temp_dir):
     assert not tar_path.exists()
 
 @pytest.mark.anyio
-async def test_shell_cmd_py_pip_mock():
+async def test_shell_cmd_py_pip_install_mock():
     python_exe = "python.exe"
     packages = ["flet"]
     
     with patch.object(AioUtils, 'shell_cmd', new_callable=AsyncMock) as mock_shell_cmd:
         mock_shell_cmd.return_value = (0, "success", "")
         
-        await AioUtils.shell_cmd_py_pip(python_exe, packages, extra_args=AioUtils.SHELL_CMD_PY_PIP_ARGS_confyui)
+        await AioUtils.shell_cmd_py_pip_install(python_exe, packages, extra_args=["--no-cache-dir", "--no-warn-script-location", "--timeout=1000", "--retries", "10"])
         
         expected_cmd = [
             python_exe, "-I", "-m", "pip", "install", 
@@ -268,14 +268,36 @@ async def test_shell_cmd_py_pip_mock():
         )
 
 @pytest.mark.anyio
-async def test_shell_cmd_py_uv_pip_mock():
+async def test_shell_cmd_py_pip_uninstall_mock():
     python_exe = "python.exe"
     packages = ["flet"]
     
     with patch.object(AioUtils, 'shell_cmd', new_callable=AsyncMock) as mock_shell_cmd:
         mock_shell_cmd.return_value = (0, "success", "")
         
-        await AioUtils.shell_cmd_py_uv_pip(python_exe, packages, extra_args=AioUtils.SHELL_CMD_PY_UV_PIP_ARGS_confyui)
+        await AioUtils.shell_cmd_py_pip_uninstall(python_exe, packages)
+        
+        expected_cmd = [
+            python_exe, "-I", "-m", "pip", "uninstall", 
+            "flet", "-y"
+        ]
+        mock_shell_cmd.assert_called_once_with(
+            expected_cmd,
+            cwd=None,
+            env=None,
+            capture_output=True,
+            ui_enabled=False
+        )
+
+@pytest.mark.anyio
+async def test_shell_cmd_py_uv_pip_install_mock():
+    python_exe = "python.exe"
+    packages = ["flet"]
+    
+    with patch.object(AioUtils, 'shell_cmd', new_callable=AsyncMock) as mock_shell_cmd:
+        mock_shell_cmd.return_value = (0, "success", "")
+        
+        await AioUtils.shell_cmd_py_uv_pip_install(python_exe, packages, extra_args=["--no-cache", "--link-mode=copy"])
         
         expected_cmd = [
             python_exe, "-I", "-m", "uv", "pip", "install", 
@@ -289,3 +311,26 @@ async def test_shell_cmd_py_uv_pip_mock():
             capture_output=True,
             ui_enabled=False
         )
+
+@pytest.mark.anyio
+async def test_shell_cmd_py_uv_pip_uninstall_mock():
+    python_exe = "python.exe"
+    packages = ["flet"]
+    
+    with patch.object(AioUtils, 'shell_cmd', new_callable=AsyncMock) as mock_shell_cmd:
+        mock_shell_cmd.return_value = (0, "success", "")
+        
+        await AioUtils.shell_cmd_py_uv_pip_uninstall(python_exe, packages)
+        
+        expected_cmd = [
+            python_exe, "-I", "-m", "uv", "pip", "uninstall", 
+            "flet", "-y"
+        ]
+        mock_shell_cmd.assert_called_once_with(
+            expected_cmd,
+            cwd=None,
+            env=None,
+            capture_output=True,
+            ui_enabled=False
+        )
+

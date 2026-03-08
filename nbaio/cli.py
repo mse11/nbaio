@@ -153,7 +153,7 @@ def git_clone(args: list[str], separator: str, concurrent: int, cwd: Optional[Pa
 def py_pip_install(python_exe: Path, packages: list[str], extra_args: list[str], cwd: Optional[Path]):
     """Run pip install via specified python executable."""
     async def do_pip():
-        return_code, stdout, stderr = await AioUtils.shell_cmd_py_pip(
+        return_code, stdout, stderr = await AioUtils.shell_cmd_py_pip_install(
             python_exe=python_exe,
             packages=list(packages),
             cwd=cwd,
@@ -168,6 +168,29 @@ def py_pip_install(python_exe: Path, packages: list[str], extra_args: list[str],
     anyio.run(do_pip)
 
 
+@cli.command(name="py_pip_uninstall")
+@click.argument("python_exe", type=click.Path(exists=True, path_type=Path))
+@click.argument("packages", nargs=-1, required=True)
+@click.option("--extra-args", multiple=True, help="Additional arguments for pip uninstall")
+@click.option("--cwd", type=click.Path(exists=True, path_type=Path), help="Working directory")
+def py_pip_uninstall(python_exe: Path, packages: list[str], extra_args: list[str], cwd: Optional[Path]):
+    """Run pip uninstall via specified python executable."""
+    async def do_pip():
+        return_code, stdout, stderr = await AioUtils.shell_cmd_py_pip_uninstall(
+            python_exe=python_exe,
+            packages=list(packages),
+            cwd=cwd,
+            extra_args=list(extra_args) if extra_args else None,
+            ui_enabled=True
+        )
+        if return_code == 0:
+            click.secho("Successfully uninstalled packages.", fg="green")
+        else:
+            click.secho(f"Pip uninstall failed with return code {return_code}", fg="red")
+
+    anyio.run(do_pip)
+
+
 @cli.command(name="py_uv_pip_install")
 @click.argument("python_exe", type=click.Path(exists=True, path_type=Path))
 @click.argument("packages", nargs=-1, required=True)
@@ -176,7 +199,7 @@ def py_pip_install(python_exe: Path, packages: list[str], extra_args: list[str],
 def py_uv_pip_install(python_exe: Path, packages: list[str], extra_args: list[str], cwd: Optional[Path]):
     """Run uv pip install via specified python executable."""
     async def do_uv_pip():
-        return_code, stdout, stderr = await AioUtils.shell_cmd_py_uv_pip(
+        return_code, stdout, stderr = await AioUtils.shell_cmd_py_uv_pip_install(
             python_exe=python_exe,
             packages=list(packages),
             cwd=cwd,
@@ -187,5 +210,28 @@ def py_uv_pip_install(python_exe: Path, packages: list[str], extra_args: list[st
             click.secho("Successfully installed packages using uv.", fg="green")
         else:
             click.secho(f"Uv pip install failed with return code {return_code}", fg="red")
+
+    anyio.run(do_uv_pip)
+
+
+@cli.command(name="py_uv_pip_uninstall")
+@click.argument("python_exe", type=click.Path(exists=True, path_type=Path))
+@click.argument("packages", nargs=-1, required=True)
+@click.option("--extra-args", multiple=True, help="Additional arguments for uv pip uninstall")
+@click.option("--cwd", type=click.Path(exists=True, path_type=Path), help="Working directory")
+def py_uv_pip_uninstall(python_exe: Path, packages: list[str], extra_args: list[str], cwd: Optional[Path]):
+    """Run uv pip uninstall via specified python executable."""
+    async def do_uv_pip():
+        return_code, stdout, stderr = await AioUtils.shell_cmd_py_uv_pip_uninstall(
+            python_exe=python_exe,
+            packages=list(packages),
+            cwd=cwd,
+            extra_args=list(extra_args) if extra_args else None,
+            ui_enabled=True
+        )
+        if return_code == 0:
+            click.secho("Successfully uninstalled packages using uv.", fg="green")
+        else:
+            click.secho(f"Uv pip uninstall failed with return code {return_code}", fg="red")
 
     anyio.run(do_uv_pip)
